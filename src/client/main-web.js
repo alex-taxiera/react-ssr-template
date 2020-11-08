@@ -1,19 +1,20 @@
 import React from 'react'
 import { hydrate } from 'react-dom'
+import { loadableReady } from '@loadable/component'
+
 import { BrowserRouter } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
-import { loadableReady } from '@loadable/component'
 
 import { App } from './app'
 
 // import "global" styles here
+import 'bootstrap/dist/css/bootstrap.css'
 import './styles/reset.scss'
 
-loadableReady(() => hydrate(
+loadableReady(() => hydrate((
   <HelmetProvider>
     <BrowserRouter>
-      <App />
+      <App manifest={window.__MANIFEST__} />
     </BrowserRouter>
-  </HelmetProvider>,
-  document.getElementById('root'),
-))
+  </HelmetProvider>
+), document.getElementById('root')))

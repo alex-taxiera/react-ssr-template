@@ -58,5 +58,6 @@ typings/
 .next
 
 # client files
-dist
+public/dist
+lib
 .DS_Store

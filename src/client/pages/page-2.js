@@ -1,9 +1,14 @@
 import React from 'react'
 
+import subImg from '../../assets/substitute.png'
+
 export default function Page2 () {
   return (
     <>
-      Page 2
+      <div>
+        Page 2
+      </div>
+      <img src={subImg} />
     </>
   )
 }

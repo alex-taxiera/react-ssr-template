@@ -1,4 +1,5 @@
-import { join } from 'path'
+import { resolve } from 'path'
+import { promises as fs } from 'fs'
 
 import React from 'react'
 import { renderToString } from 'react-dom/server'
@@ -7,59 +8,104 @@ import { HelmetProvider } from 'react-helmet-async'
 import { ChunkExtractor } from '@loadable/server'
 import queryString from 'query-string'
 
+import serialize from 'serialize-javascript'
 import helica from 'helica'
 import { routeLoader } from '../utils/route-loader.js'
-import { App as WebApp } from '../../client/app'
+
+const manifestPath = resolve(
+  __dirname,
+  '../../../public/dist/node/manifest.json',
+)
+
+const nodeStats = resolve(
+  __dirname,
+  '../../../public/dist/node/loadable-stats.json',
+)
+
+const webStats = resolve(
+  __dirname,
+  '../../../public/dist/web/loadable-stats.json',
+)
 
 class App {
 
-  get (res, req) {
-    const extractor = new ChunkExtractor({
-      statsFile: join(__dirname, '../../../dist/loadable-stats.json'),
-      entrypoints: [ 'main' ],
-    })
-    const helmetContext = {}
+  async get (res, req) {
+    const manifest = JSON.parse(await fs.readFile(manifestPath))
+    const nodeExtractor = new ChunkExtractor({ statsFile: nodeStats })
+    const { App: ReactApp } = nodeExtractor.requireEntrypoint()
 
-    const jsx = (
-      <HelmetProvider context={helmetContext}>
+    const webExtractor = new ChunkExtractor({ statsFile: webStats })
+
+    const context = {
+      helmet: {},
+      router: {},
+    }
+    const jsx = webExtractor.collectChunks(
+      <HelmetProvider context={context.helmet}>
         <StaticRouter
-          context={{}}
+          context={context.router}
           location={{
             pathname: req.url,
             search: queryString.stringify(req.query),
           }}
         >
-          <WebApp />
+          <ReactApp manifest={manifest} />
         </StaticRouter>
-      </HelmetProvider>
+      </HelmetProvider>,
     )
 
-    const html = renderToString(extractor.collectChunks(jsx))
-    const { helmet } = helmetContext
+    if (context.router.url) {
+      return helica.send(res, '', 302, {
+        Location: context.router.url,
+      })
+    }
 
-    return helica.send(
-      res,
-      `
-        <!DOCTYPE html>
-        <html ${helmet.htmlAttributes.toString()}>
-          <head>
-            ${helmet.title.toString()}
-            ${helmet.meta.toString()}
-            ${helmet.link.toString()}
-            ${extractor.getLinkTags()}
-            ${extractor.getStyleTags()}
-          </head>
-          <body ${helmet.bodyAttributes.toString()}>
-            <div id="root">${html}</div>
-            ${extractor.getScriptTags()}
-          </body>
-        </html>
-      `,
-    )
+    const html = renderToString(jsx)
+    const { helmet } = context.helmet
+
+    helica.render(res, `
+      <!DOCTYPE html>
+      <html ${helmet.htmlAttributes.toString()}>
+        <head>
+          ${helmet.title.toString()}
+          ${helmet.meta.toString()}
+          ${helmet.link.toString()}
+          ${webExtractor.getLinkTags()}
+          ${webExtractor.getStyleTags()}
+        </head>
+        <body ${helmet.bodyAttributes.toString()}>
+          <div id="root">${html}</div>
+          <script>window.__MANIFEST__ = ${serialize(manifest)}</script>
+          ${webExtractor.getScriptTags()}
+        </body>
+      </html>
+    `)
+  }
+
+}
+
+class Manifest {
+
+  get (res) {
+    helica.send(res, '', 302, {
+      Location: '/dist/web/manifest.webmanifest',
+    })
+  }
+
+}
+
+class Favicon {
+
+  get (res) {
+    helica.send(res, '', 302, {
+      Location: '/dist/favicon.ico',
+    })
   }
 
 }
 
 export const loadRoute = routeLoader((app, basePath) => {
-  app.addResource(`${basePath}`, App)
+  app.addResource('/favicon.ico', Favicon)
+  app.addResource('/manifest.webmanifest', Manifest)
+  app.addResource(basePath, App)
 })
