@@ -7,10 +7,10 @@ import { Header } from './header'
 import { Footer } from './footer'
 import { Routes } from './routes'
 
-export function App ({ manifest }) {
+export function App ({ data }) {
   return (
     <>
-      <MainSEO manifest={manifest} />
+      <MainSEO manifest={data.manifest} />
       <Header />
       <main className="text-center flex-grow-1">
         <Routes />

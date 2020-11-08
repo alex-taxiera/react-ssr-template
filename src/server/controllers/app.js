@@ -36,6 +36,10 @@ class App {
 
     const webExtractor = new ChunkExtractor({ statsFile: webStats })
 
+    const preData = {
+      manifest,
+    }
+
     const context = {
       helmet: {},
       router: {},
@@ -49,7 +53,7 @@ class App {
             search: queryString.stringify(req.query),
           }}
         >
-          <ReactApp manifest={manifest} />
+          <ReactApp data={preData} />
         </StaticRouter>
       </HelmetProvider>,
     )
@@ -75,7 +79,7 @@ class App {
         </head>
         <body ${helmet.bodyAttributes.toString()}>
           <div id="root">${html}</div>
-          <script>window.__MANIFEST__ = ${serialize(manifest)}</script>
+          <script>window.__SERVER_DATA__ = ${serialize(preData)}</script>
           ${webExtractor.getScriptTags()}
         </body>
       </html>

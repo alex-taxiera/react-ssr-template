@@ -14,7 +14,7 @@ import './styles/reset.scss'
 loadableReady(() => hydrate((
   <HelmetProvider>
     <BrowserRouter>
-      <App manifest={window.__MANIFEST__} />
+      <App data={window.__SERVER_DATA__} />
     </BrowserRouter>
   </HelmetProvider>
 ), document.getElementById('root')))
